@@ -170,7 +170,6 @@ def ejecutar_scripts_en_subcarpetas(subcarpetas, link):
 import threading
 
 def iniciar_ejecucion_en_hilo():
-    # Mover la ejecución a un nuevo hilo para no bloquear la UI
     hilo = threading.Thread(target=iniciar_ejecucion)
     hilo.start()
 
