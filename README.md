@@ -11,10 +11,6 @@ This script uses proxies to send "views" to Telegram channel messages in bulk. ð
   - `requests`
   - `threading`
 
-```bash
-pip install -r requirements.txt
-```
-
 # ðŸ“¡ Proxies
 
 The script collects proxies from ProxyScrape for three types of proxies:
