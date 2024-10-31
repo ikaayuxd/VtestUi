@@ -2,6 +2,10 @@
 
 This script uses proxies to send "views" to Telegram channel messages in bulk. 🚀
 
+# V2
+
+This script now includes an updated interface and enhanced proxy validation. Only valid proxies are used to send "views" to Telegram channel messages in bulk. 🚀
+
 ![Telethon-GUI](main.gif)
 
 ## 🛠 Requirements
