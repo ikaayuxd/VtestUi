@@ -11,23 +11,19 @@ from tkinter import ttk, messagebox
 import customtkinter as ctk
 import sys
 
-# Set DPI awareness for high-resolution displays
 try:
     ctypes.windll.shcore.SetProcessDpiAwareness(1)
 except Exception:
     pass
 
-# Embedded Python script as a multi-line string
 codigo_view_py = r"""
 import os
 import sys
 import requests
-import threading
 from concurrent.futures import ThreadPoolExecutor
 from queue import Queue
 
-
-n_threads =  100
+n_threads = 100
 queue = Queue()
 valid_proxies = []
 
@@ -35,6 +31,14 @@ if len(sys.argv) > 1:
     link1 = sys.argv[1]
 else:
     sys.exit(1)
+
+def load_existing_proxies(filename="proxies.txt"):
+    existing_proxies = set()
+    if os.path.exists(filename):
+        with open(filename, "r") as file:
+            for line in file:
+                existing_proxies.add(line.strip())
+    return existing_proxies
 
 def view2(proxy):
     try:
@@ -44,7 +48,11 @@ def view2(proxy):
     except Exception:
         pass
 
+# Agregar una variable global para el contador de visitas
+vistas_validas = 0
+
 def send_seen(channel, msgid, proxy):
+    global vistas_validas  # Referenciar la variable global
     s = requests.Session()
     s.proxies = {
         'http': proxy,
@@ -80,7 +88,9 @@ def send_seen(channel, msgid, proxy):
     try:
         response = s.get(f'https://t.me/v/?views={key}', headers=headers)
         if response.text == "true":
-            print(f"Vista emitida con proxy: {proxy}")
+            vistas_validas += 1  
+            print(f"👁‍🗨 {vistas_validas} - {proxy}") 
+            return True
     except Exception:
         return False
 
@@ -90,8 +100,8 @@ def scrap_proxies(proxy_type="https"):
         response = requests.get(url, timeout=5)
         return response.text.splitlines()
     except requests.RequestException as e:
-        print(f"Error al obtener proxies ({proxy_type}): {e}")
         return []
+
 
 def is_proxy_valid(proxy, session, test_urls=["http://httpbin.org/ip", "http://example.com"]):
     for test_url in test_urls:
@@ -103,22 +113,26 @@ def is_proxy_valid(proxy, session, test_urls=["http://httpbin.org/ip", "http://e
             continue
     return False
 
+
 def checker():
-    session = requests.Session()  # Crear una sesión por hilo
+    session = requests.Session()  
+    existing_proxies = load_existing_proxies() 
     while not queue.empty():
         proxy = queue.get()
-        if len(valid_proxies) < 150 and is_proxy_valid(proxy, session):
+        if len(valid_proxies) <50 and is_proxy_valid(proxy, session) and proxy not in existing_proxies:
             valid_proxies.append(proxy)
-            print(f"Proxy válido: {proxy}")
+            print(f"- {proxy}")
+            with open("proxies.txt", "a") as file:
+                file.write(proxy + "\n")
+            existing_proxies.add(proxy)  
         queue.task_done()
 
 def start_proxy_validation(proxy_type="https"):
     proxies = scrap_proxies(proxy_type)
     if not proxies:
-        print(f"No se pudieron obtener proxies de tipo {proxy_type}.")
         return
 
-    proxies = list(set(proxies))[:500]  # Eliminar duplicados y limitar a 500 proxies
+    proxies = list(set(proxies))[:500] 
     for proxy in proxies:
         if proxy.strip():
             queue.put(proxy.strip())
@@ -127,28 +141,20 @@ def start_proxy_validation(proxy_type="https"):
         for _ in range(n_threads):
             executor.submit(checker)
 
-def process(run_for_ever: bool = False):
-    if run_for_ever:
-        while True:
-            for proxy_type in ["http", "https", "socks4"]:
-                print(f"\nIniciando validación de proxies de tipo {proxy_type.upper()}")
-                valid_proxies.clear() 
-                start_proxy_validation(proxy_type)
-    else:
-        for proxy_type in ["http", "https", "socks4"]:
-            print(f"\nIniciando validación de proxies de tipo {proxy_type.upper()}")
-            valid_proxies.clear()
-            start_proxy_validation(proxy_type)
+def process():
+    existing_proxies = load_existing_proxies()
+    valid_proxies.extend(existing_proxies) 
+
+    for proxy in valid_proxies:
+        view2(proxy)
+
+    for proxy_type in ["http", "https", "socks4"]:
+        valid_proxies.clear()
+        start_proxy_validation(proxy_type)
         
-        with open("valid_proxies.txt", "w") as file:
-            for proxy in valid_proxies:
-                file.write(proxy + "\n")
-        
-      
         for proxy in valid_proxies:
             view2(proxy)
-
-process(False)
+process()
 """
 
 tmp_dir = tempfile.gettempdir()
@@ -161,7 +167,6 @@ telegram_url_regex = r"^https:\/\/t\.me\/[a-zA-Z0-9_]+\/[0-9]+$"
 def open_url():
     url = "https://t.me/underbytes"
     subprocess.Popen(['cmd', '/c', 'start', url])
-
 
 def crear_subcarpetas_y_generar_scripts(num_subcarpetas):
     subcarpetas = []
@@ -190,7 +195,6 @@ def ejecutar_scripts_en_subcarpetas(subcarpetas, link):
         except Exception as e:
             messagebox.showerror("Error", f"Failed to execute script: {e}")
 
-
 def iniciar_ejecucion():
     global is_running, link_index
     with lock:
@@ -206,7 +210,6 @@ def iniciar_ejecucion():
         root.update()
         time.sleep(60)
 
-
 def iniciar_ejecucion_en_hilo():
     open_url()
     threading.Thread(target=iniciar_ejecucion).start()
@@ -220,7 +223,6 @@ def detener_ejecucion():
         processes.clear()
     messagebox.showinfo("Stopped", "All processes have been stopped.")
 
-
 def agregar_link():
     link = entry_link.get()
     if re.match(telegram_url_regex, link):
@@ -228,7 +230,6 @@ def agregar_link():
         entry_link.delete(0, tk.END)
     else:
         messagebox.showerror("Error", "Please enter a valid Telegram URL.")
-
 
 def eliminar_link():
     selected_item = tree.selection()
@@ -248,7 +249,6 @@ def on_motion(event):
     y = (event.y_root - root.y)
     root.geometry(f"+{x}+{y}")
 
-
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
 
@@ -262,42 +262,55 @@ root.wm_attributes('-alpha', 0.92)
 icon_path = os.path.abspath("undermain.ico")
 if os.path.exists(icon_path):
     root.iconbitmap(icon_path)
+
 root.bind("<Button-1>", start_move)
 root.bind("<ButtonRelease-1>", stop_move)
 root.bind("<B1-Motion>", on_motion)
+
 frame_config = ctk.CTkFrame(root, fg_color="#262626")
 frame_config.grid(row=0, column=0, sticky="ew", padx=10, pady=(10, 5))
+
 label_num_subcarpetas = ctk.CTkLabel(frame_config, text="Procss:", text_color="#ffffff")
 label_num_subcarpetas.grid(row=0, column=0, padx=(5, 0), pady=5, sticky="w")
 entry_num_subcarpetas = ctk.CTkEntry(frame_config, width=50)
 entry_num_subcarpetas.grid(row=0, column=1, padx=5, pady=5)
 entry_num_subcarpetas.insert(0, "5")
+
 label_link = ctk.CTkLabel(frame_config, text="Link:", text_color="#ffffff")
 label_link.grid(row=0, column=2, padx=(10, 5), pady=5, sticky="w")
 entry_link = ctk.CTkEntry(frame_config, width=140)
 entry_link.grid(row=0, column=3, padx=5, pady=5)
+
 btn_agregar = ctk.CTkButton(frame_config, text="Add Link", command=agregar_link, fg_color="#ba4a4a", hover_color="#953636")
 btn_agregar.grid(row=0, column=4, padx=5, pady=5)
+
 frame_tabla = ctk.CTkFrame(root, fg_color="#262626")
 frame_tabla.grid(row=1, column=0, sticky="nsew", padx=10, pady=5)
+
 tree = ttk.Treeview(frame_tabla, columns=("LINKS"), show="headings", height=6)
 tree.heading("LINKS", text="LINKS")
 tree.pack(side="left", fill="both", expand=True)
 style = ttk.Style()
 style.configure("Treeview", background="#333333", foreground="white", rowheight=25, fieldbackground="#333333")
 style.map('Treeview', background=[('selected', '#4f4f4f')])
+
 scrollbar = ctk.CTkScrollbar(frame_tabla, orientation="vertical", command=tree.yview)
 scrollbar.pack(side="right", fill="y")
 tree.configure(yscrollcommand=scrollbar.set)
+
 frame_botones = ctk.CTkFrame(root, fg_color="#262626")
 frame_botones.grid(row=2, column=0, sticky="ew", padx=10, pady=(5, 10))
+
 btn_eliminar = ctk.CTkButton(frame_botones, text="Remove", command=eliminar_link, fg_color="#3A3A4D", hover_color="#953636")
 btn_eliminar.grid(row=0, column=0, padx=5, pady=5)
+
 btn_iniciar = ctk.CTkButton(frame_botones, text="Start", command=iniciar_ejecucion_en_hilo, fg_color="#3A3A4D", hover_color="#276749")
 btn_iniciar.grid(row=0, column=1, padx=5, pady=5)
+
 btn_detener = ctk.CTkButton(frame_botones, text="Stop", command=detener_ejecucion, fg_color="#3A3A4D", hover_color="#953636")
 btn_detener.grid(row=0, column=2, padx=5, pady=5)
 
 root.grid_rowconfigure(1, weight=1)
 root.grid_columnconfigure(0, weight=1)
+
 root.mainloop()
