@@ -6,7 +6,7 @@ This script uses proxies to send "views" to Telegram channel messages in bulk. �
 
 ## 🔥 **V2 - What's New?**  
 
-Version 2 brings significant improvements in **performance, stability, and user experience**. Here are the key updates:  
+![v2-GUI](v2.gif)
 
 ### ⚡ **Code Optimization**  
 - 🏎 **Migrated to `asyncio` and `aiohttp`** for improved performance with asynchronous requests.  
