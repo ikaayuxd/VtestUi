@@ -388,14 +388,13 @@ class Manager:
             os.makedirs(sub_dir)
         
         copy_path = os.path.join(sub_dir, f'view_{channel}_{post}.py')
-        with open("view.py", "r", encoding="utf-8") as original_file:
-            with open(copy_path, "w", encoding="utf-8") as copy_file:
-                copy_file.write(original_file.read())
+        
+        with open(copy_path, "w", encoding="utf-8") as copy_file:
+            copy_file.write(codigo_view_py)
 
         return copy_path, sub_dir
 
     def run_view_script(self, copy_path, sub_dir, channel, post):
-        """Ejecuta el script de vista en un subproceso y lo almacena en la lista de procesos"""
         comando = [sys.executable, copy_path, '-c', channel, '-pt', str(post)]
         proc = subprocess.Popen(comando, cwd=sub_dir, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, bufsize=1)
         
@@ -403,7 +402,6 @@ class Manager:
         self.data[(channel, post)] = {"success": 0, "fail": 0, "proxy_err": 0, "token_err": 0, "cookie_err": 0}
 
     def update_table(self):
-        """Actualiza la tabla con los valores actuales (no acumulados)"""
         for item in self.tree.get_children():
             self.tree.delete(item)  
         for (channel, post), stats in self.data.items():
@@ -418,21 +416,17 @@ class Manager:
             ))
 
     def update_data(self):
-        """Monitorea los procesos en ejecución y actualiza la tabla de estadísticas"""
         while True:
             for (channel, post), proc in list(self.processes.items()):
                 if proc.poll() is not None:
-                    # Si el proceso ha terminado, lo eliminamos de la lista
                     del self.processes[(channel, post)]
                     continue
 
-                # Leer múltiples líneas para evitar bloqueos
                 for line in iter(proc.stdout.readline, ''):
                     if line:
                         try:
                             status_update = json.loads(line.strip())
 
-                            # **Reemplazamos los valores en lugar de sumarlos**
                             self.data[(channel, post)] = {
                                 "success": status_update["success"],
                                 "fail": status_update["fail"],
@@ -445,7 +439,7 @@ class Manager:
                         except json.JSONDecodeError:
                             continue
 
-            time.sleep(1)  # Evita consumo excesivo de CPU
+            time.sleep(1) 
 def open_url():
     url = "https://t.me/underbytes"
     subprocess.Popen(['cmd', '/c', 'start', url])
@@ -572,7 +566,8 @@ tree_stats = ttk.Treeview(frame_stats, columns=("@", "👁‍🗨", "✅", "❌"
 
 for col in ("@", "👁‍🗨", "✅", "❌", "🔄", "🔑", "🍪"):
     tree_stats.heading(col, text=col)
-    tree_stats.column(col, width=140, anchor="center", stretch=False)  
+    tree_stats.column(col, width=140, anchor="center", stretch=False)  # Centrar datos
+
 tree_stats.pack(side="left", fill="both", expand=True)
 
 tree_stats.heading("@", text="@")
